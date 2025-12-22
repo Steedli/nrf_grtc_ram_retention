@@ -46,7 +46,8 @@ static void reboot_work_handler(struct k_work *work)
 	k_msleep(100); // Allow time for log output
 	
 	// Execute software reset
-	sys_reboot(SYS_REBOOT_WARM);
+	// sys_reboot(SYS_REBOOT_WARM);
+	sys_reboot(SYS_REBOOT_COLD);	
 }
 
 int main(void)
