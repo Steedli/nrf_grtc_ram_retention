@@ -1,5 +1,9 @@
 /*
  * UTC Time Management using GRTC Timer - Header File
+ * 
+ * NOTE: On nRF54L15/nRF54H20, GRTC automatically persists through 
+ * software reset (CONFIG_NRF_GRTC_TIMER=y). No manual retention
+ * configuration is needed.
  */
 
 #ifndef UTC_TIME_H
@@ -99,21 +103,5 @@ int utc_time_format_us(uint64_t us, char *buffer, size_t size);
  * @return Number of characters written
  */
 int utc_time_format(char *buffer, size_t size);
-
-/**
- * @brief Enable GRTC retention mode
- * 
- * When enabled, GRTC counter continues running through software reset,
- * allowing time to persist without NVS storage.
- * This is automatically called during calibration.
- */
-void utc_time_enable_retention(void);
-
-/**
- * @brief Check if GRTC retention is active
- * 
- * @return true if GRTC will persist through reset, false otherwise
- */
-bool utc_time_retention_active(void);
 
 #endif /* UTC_TIME_H */

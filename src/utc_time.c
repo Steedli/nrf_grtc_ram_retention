@@ -1,6 +1,10 @@
 /*
  * UTC Time Management using GRTC Timer
  * Copyright (c) 2025
+ * 
+ * NOTE: On nRF54L15/nRF54H20, GRTC (Global Real-Time Counter) automatically 
+ * persists through software reset when CONFIG_NRF_GRTC_TIMER=y is enabled.
+ * No manual KEEPRUNNING register configuration is needed.
  */
 
 #include <zephyr/kernel.h>
@@ -14,43 +18,6 @@ LOG_MODULE_REGISTER(utc_time, LOG_LEVEL_INF);
 static int64_t utc_offset = 0;
 static bool calibrated = false;
 
-/* GRTC retention support */
-#define GRTC_NODE DT_NODELABEL(grtc)
-#define GRTC_BASE DT_REG_ADDR(GRTC_NODE)
-
-/* GRTC register offsets for nRF54L15 */
-#define GRTC_KEEPRUNNING_OFFSET 0x534
-#define GRTC_KEEPRUNNING_DOMAIN0_Pos 0
-#define GRTC_KEEPRUNNING_DOMAIN0_Active (1UL)
-
-/**
- * @brief Enable GRTC retention (keep running through reset)
- * 
- * This ensures GRTC counter continues running even during software reset,
- * allowing time to be preserved without using NVS storage.
- */
-static void grtc_retention_enable(void)
-{
-	volatile uint32_t *keeprunning_reg = (volatile uint32_t *)(GRTC_BASE + GRTC_KEEPRUNNING_OFFSET);
-	
-	/* Set KEEPRUNNING bit for domain 0 (application core) */
-	*keeprunning_reg |= (GRTC_KEEPRUNNING_DOMAIN0_Active << GRTC_KEEPRUNNING_DOMAIN0_Pos);
-	
-	LOG_INF("GRTC retention enabled - counter will persist through soft reset");
-}
-
-/**
- * @brief Check if GRTC retention is enabled
- * 
- * @return true if retention is enabled, false otherwise
- */
-static bool grtc_retention_check(void)
-{
-	volatile uint32_t *keeprunning_reg = (volatile uint32_t *)(GRTC_BASE + GRTC_KEEPRUNNING_OFFSET);
-	
-	return (*keeprunning_reg & (GRTC_KEEPRUNNING_DOMAIN0_Active << GRTC_KEEPRUNNING_DOMAIN0_Pos)) != 0;
-}
-
 /**
  * @brief Calibrate UTC time with external time source
  * 
@@ -62,14 +29,10 @@ void utc_time_calibrate(uint64_t utc_timestamp_us)
 	utc_offset = (int64_t)utc_timestamp_us - (int64_t)grtc_time;
 	calibrated = true;
 	
-	/* Enable GRTC retention to preserve time through reset */
-	grtc_retention_enable();
-	
 	LOG_INF("UTC time calibrated");
-	LOG_INF("GRTC time: %llu us", grtc_time);
-	LOG_INF("UTC time:  %llu us", utc_timestamp_us);
-	LOG_INF("Offset:    %lld us", utc_offset);
-	LOG_INF("GRTC retention: %s", grtc_retention_check() ? "enabled" : "disabled");
+	LOG_INF("  GRTC time: %llu us", grtc_time);
+	LOG_INF("  UTC time:  %llu us", utc_timestamp_us);
+	LOG_INF("  Offset:    %lld us", utc_offset);
 }
 
 /**
@@ -205,22 +168,4 @@ int utc_time_format(char *buffer, size_t size)
 {
 	uint64_t us = utc_time_get_us();
 	return utc_time_format_us(us, buffer, size);
-}
-
-/**
- * @brief Enable GRTC retention mode (public API)
- */
-void utc_time_enable_retention(void)
-{
-	grtc_retention_enable();
-}
-
-/**
- * @brief Check if GRTC retention is active (public API)
- * 
- * @return true if retention is enabled, false otherwise
- */
-bool utc_time_retention_active(void)
-{
-	return grtc_retention_check();
 }

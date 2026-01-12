@@ -19,6 +19,9 @@ test_timer: &timer21 {
 	prescaler = <0>;
 };
 
+&wdt31 {
+	status = "okay";
+};
 
 / {
 	cpuapp_sram@2002e000 {

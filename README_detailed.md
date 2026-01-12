@@ -7,9 +7,11 @@ This example demonstrates GRTC (Global Real-Time Counter) retention and RAM rete
 ## Features
 
 ### GRTC Retention
-- **Hardware counter persistence**: GRTC continues counting through warm resets
-- **KEEPRUNNING register**: Automatically enabled to maintain counter state
+- **Hardware counter persistence**: GRTC system counter continues counting through software resets
+- **System counter register**: `z_nrf_grtc_timer_read()` reads GRTC system counter register directly
+- **Automatic retention**: On nRF54L15, GRTC automatically persists through `SYS_REBOOT_COLD` (no manual configuration needed)
 - **1 MHz precision**: 64-bit microsecond resolution
+- **Limitation**: GRTC counter does NOT persist through watchdog reset
 
 ### RAM Retention
 - **Persistent data storage**: Uses retained RAM region to preserve application state
@@ -117,12 +119,19 @@ CONFIG_CRC=y                  # Enable CRC32 for data validation
 
 #### GRTC Retention (utc_time.c)
 ```c
-// Enable GRTC KEEPRUNNING for retention
-#define GRTC_KEEPRUNNING_OFFSET 0x534
-volatile uint32_t *keeprunning_reg = 
-    (volatile uint32_t *)(GRTC_BASE + GRTC_KEEPRUNNING_OFFSET);
-*keeprunning_reg |= (1UL << 0);  // Domain 0 active
+// GRTC system counter is read via Zephyr API
+uint64_t grtc_time = z_nrf_grtc_timer_read();
+
+// On nRF54L15, GRTC automatically persists through software reset
+// when CONFIG_NRF_GRTC_TIMER=y is enabled.
+// No manual KEEPRUNNING register configuration is needed.
 ```
+
+**Implementation Notes**:
+- `z_nrf_grtc_timer_read()` directly reads the hardware GRTC system counter register
+- The system counter is in the always-on power domain
+- Software reset (`SYS_REBOOT_COLD`) does not clear this register
+- Watchdog reset DOES clear the counter (counter resets to 0)
 
 #### RAM Retention (retained.c)
 - Uses Zephyr retained memory driver
